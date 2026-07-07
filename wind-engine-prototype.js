@@ -1,10 +1,15 @@
 // wind-engine-prototype.js
 // Prototipo motore statistiche vento - Open-Meteo Historical Archive API
-// Uso: node wind-engine-prototype.js
+// Uso: node wind-engine-prototype.js [opzioni]
 // Richiede Node 18+ (fetch nativo) e connessione internet verso archive-api.open-meteo.com
 //
 // Metodologia "giorno kiteable" (soglia ispirata a bstoked, personalizzabile):
 // almeno N ore consecutive diurne con vento medio >= soglia in nodi.
+//
+// Le soglie sono configurabili da riga di comando, es:
+//   node wind-engine-prototype.js --knots 15 --hours 4 --day-start 10 --day-end 18
+//   node wind-engine-prototype.js --start 2019-01-01 --end 2023-12-31
+// Usa --help per l'elenco completo delle opzioni.
 
 const SPOTS = [
   { name: "Tarifa (Spagna)", lat: 36.0128, lon: -5.6012 },
@@ -13,12 +18,79 @@ const SPOTS = [
   // Aggiungi altri spot qui: { name: "...", lat: ..., lon: ... }
 ];
 
-const KNOTS_THRESHOLD = 12;       // soglia vento minimo utile (nodi)
-const MIN_CONSECUTIVE_HOURS = 3;  // ore consecutive minime
-const DAY_START_HOUR = 9;         // finestra diurna: inizio
-const DAY_END_HOUR = 19;          // finestra diurna: fine
+// Valori predefiniti (sovrascrivibili da CLI).
+const DEFAULTS = {
+  knots: 12,       // soglia vento minimo utile (nodi)
+  hours: 3,        // ore consecutive minime
+  dayStart: 9,     // finestra diurna: inizio
+  dayEnd: 19,      // finestra diurna: fine
+  start: "2021-01-01",
+  end: "2025-12-31", // 5 anni di storico
+};
+
+const OPTIONS = [
+  { flags: ["--knots", "-k"], key: "knots", type: "int", help: "soglia vento minimo utile in nodi" },
+  { flags: ["--hours", "-h"], key: "hours", type: "int", help: "ore consecutive minime sopra soglia" },
+  { flags: ["--day-start"], key: "dayStart", type: "int", help: "ora inizio finestra diurna (0-23)" },
+  { flags: ["--day-end"], key: "dayEnd", type: "int", help: "ora fine finestra diurna (0-23)" },
+  { flags: ["--start"], key: "start", type: "date", help: "data inizio storico (YYYY-MM-DD)" },
+  { flags: ["--end"], key: "end", type: "date", help: "data fine storico (YYYY-MM-DD)" },
+];
 
 const MONTH_NAMES = ["Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set","Ott","Nov","Dic"];
+
+function printHelp() {
+  console.log("Uso: node wind-engine-prototype.js [opzioni]\n");
+  console.log("Opzioni:");
+  for (const opt of OPTIONS) {
+    const label = opt.flags.join(", ") + (opt.type === "date" ? " <YYYY-MM-DD>" : " <n>");
+    console.log(`  ${label.padEnd(28)} ${opt.help} (default: ${DEFAULTS[opt.key]})`);
+  }
+  console.log(`  ${"--help".padEnd(28)} mostra questo messaggio`);
+}
+
+function parseArgs(argv) {
+  const config = { ...DEFAULTS };
+  const byFlag = {};
+  for (const opt of OPTIONS) for (const f of opt.flags) byFlag[f] = opt;
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === "--help") { printHelp(); process.exit(0); }
+
+    // Supporta sia "--flag valore" che "--flag=valore".
+    let flag = arg, inlineValue;
+    const eq = arg.indexOf("=");
+    if (arg.startsWith("--") && eq !== -1) {
+      flag = arg.slice(0, eq);
+      inlineValue = arg.slice(eq + 1);
+    }
+
+    const opt = byFlag[flag];
+    if (!opt) throw new Error(`Opzione sconosciuta: ${arg} (usa --help)`);
+
+    const raw = inlineValue !== undefined ? inlineValue : argv[++i];
+    if (raw === undefined) throw new Error(`Valore mancante per ${flag}`);
+
+    if (opt.type === "int") {
+      const n = Number(raw);
+      if (!Number.isInteger(n)) throw new Error(`Valore non intero per ${flag}: ${raw}`);
+      config[opt.key] = n;
+    } else {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) throw new Error(`Data non valida per ${flag}: ${raw} (formato YYYY-MM-DD)`);
+      config[opt.key] = raw;
+    }
+  }
+
+  if (config.dayStart < 0 || config.dayStart > 23 || config.dayEnd < 0 || config.dayEnd > 23)
+    throw new Error("Le ore della finestra diurna devono essere tra 0 e 23");
+  if (config.dayStart > config.dayEnd)
+    throw new Error("--day-start non puo' essere maggiore di --day-end");
+  if (config.hours < 1) throw new Error("--hours deve essere >= 1");
+  if (config.start > config.end) throw new Error("--start non puo' essere successivo a --end");
+
+  return config;
+}
 
 async function fetchHistoricalWind(lat, lon, startDate, endDate) {
   const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&hourly=wind_speed_10m&wind_speed_unit=kn`;
@@ -27,7 +99,7 @@ async function fetchHistoricalWind(lat, lon, startDate, endDate) {
   return res.json();
 }
 
-function computeMonthlyStats(data) {
+function computeMonthlyStats(data, config) {
   const times = data.hourly.time;
   const winds = data.hourly.wind_speed_10m;
   const dayMap = {};
@@ -35,7 +107,7 @@ function computeMonthlyStats(data) {
   times.forEach((t, i) => {
     const [datePart, timePart] = t.split("T");
     const hour = parseInt(timePart.split(":")[0], 10);
-    if (hour < DAY_START_HOUR || hour > DAY_END_HOUR) return;
+    if (hour < config.dayStart || hour > config.dayEnd) return;
     if (!dayMap[datePart]) dayMap[datePart] = [];
     dayMap[datePart].push(winds[i]);
   });
@@ -49,24 +121,34 @@ function computeMonthlyStats(data) {
 
     let maxStreak = 0, streak = 0;
     hourlyWinds.forEach((w) => {
-      if (w >= KNOTS_THRESHOLD) { streak += 1; maxStreak = Math.max(maxStreak, streak); }
+      if (w >= config.knots) { streak += 1; maxStreak = Math.max(maxStreak, streak); }
       else streak = 0;
     });
-    if (maxStreak >= MIN_CONSECUTIVE_HOURS) monthlyTotals[month].kiteableDays += 1;
+    if (maxStreak >= config.hours) monthlyTotals[month].kiteableDays += 1;
   });
 
   return monthlyTotals;
 }
 
 async function main() {
-  const startDate = "2021-01-01";
-  const endDate = "2025-12-31"; // 5 anni di storico
+  let config;
+  try {
+    config = parseArgs(process.argv.slice(2));
+  } catch (err) {
+    console.error(`Errore argomenti: ${err.message}`);
+    process.exit(1);
+  }
+
+  console.log(
+    `Criterio: >= ${config.hours}h consecutive con vento >= ${config.knots}kn ` +
+    `nella finestra ${config.dayStart}:00-${config.dayEnd}:00 | storico ${config.start} -> ${config.end}`
+  );
 
   for (const spot of SPOTS) {
     console.log(`\n=== ${spot.name} ===`);
     try {
-      const data = await fetchHistoricalWind(spot.lat, spot.lon, startDate, endDate);
-      const stats = computeMonthlyStats(data);
+      const data = await fetchHistoricalWind(spot.lat, spot.lon, config.start, config.end);
+      const stats = computeMonthlyStats(data, config);
       for (let m = 1; m <= 12; m++) {
         const mm = String(m).padStart(2, "0");
         const s = stats[mm];
