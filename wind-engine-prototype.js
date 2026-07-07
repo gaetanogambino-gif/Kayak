@@ -10,6 +10,13 @@
 //   node wind-engine-prototype.js --knots 15 --hours 4 --day-start 10 --day-end 18
 //   node wind-engine-prototype.js --start 2019-01-01 --end 2023-12-31
 // Usa --help per l'elenco completo delle opzioni.
+//
+// Modalita' offline (senza rete): usa un fixture JSON al posto delle API.
+//   node generate-fixture.js               # genera wind-fixture.json
+//   node wind-engine-prototype.js --offline
+//   node wind-engine-prototype.js --offline --fixture ./altro-fixture.json
+
+const fs = require("fs");
 
 const SPOTS = [
   { name: "Tarifa (Spagna)", lat: 36.0128, lon: -5.6012 },
@@ -26,6 +33,8 @@ const DEFAULTS = {
   dayEnd: 19,      // finestra diurna: fine
   start: "2021-01-01",
   end: "2025-12-31", // 5 anni di storico
+  offline: false,
+  fixture: "wind-fixture.json",
 };
 
 const OPTIONS = [
@@ -35,6 +44,8 @@ const OPTIONS = [
   { flags: ["--day-end"], key: "dayEnd", type: "int", help: "ora fine finestra diurna (0-23)" },
   { flags: ["--start"], key: "start", type: "date", help: "data inizio storico (YYYY-MM-DD)" },
   { flags: ["--end"], key: "end", type: "date", help: "data fine storico (YYYY-MM-DD)" },
+  { flags: ["--offline"], key: "offline", type: "bool", help: "usa il fixture JSON invece delle API" },
+  { flags: ["--fixture"], key: "fixture", type: "path", help: "percorso del fixture JSON (con --offline)" },
 ];
 
 const MONTH_NAMES = ["Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set","Ott","Nov","Dic"];
@@ -42,8 +53,9 @@ const MONTH_NAMES = ["Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set","Ott"
 function printHelp() {
   console.log("Uso: node wind-engine-prototype.js [opzioni]\n");
   console.log("Opzioni:");
+  const argHint = { int: " <n>", date: " <YYYY-MM-DD>", path: " <file>", bool: "" };
   for (const opt of OPTIONS) {
-    const label = opt.flags.join(", ") + (opt.type === "date" ? " <YYYY-MM-DD>" : " <n>");
+    const label = opt.flags.join(", ") + (argHint[opt.type] || "");
     console.log(`  ${label.padEnd(28)} ${opt.help} (default: ${DEFAULTS[opt.key]})`);
   }
   console.log(`  ${"--help".padEnd(28)} mostra questo messaggio`);
@@ -69,6 +81,15 @@ function parseArgs(argv) {
     const opt = byFlag[flag];
     if (!opt) throw new Error(`Opzione sconosciuta: ${arg} (usa --help)`);
 
+    // Le opzioni booleane non consumano un valore (a meno di --flag=true/false).
+    if (opt.type === "bool") {
+      if (inlineValue === undefined) { config[opt.key] = true; continue; }
+      if (inlineValue !== "true" && inlineValue !== "false")
+        throw new Error(`Valore booleano non valido per ${flag}: ${inlineValue} (usa true/false)`);
+      config[opt.key] = inlineValue === "true";
+      continue;
+    }
+
     const raw = inlineValue !== undefined ? inlineValue : argv[++i];
     if (raw === undefined) throw new Error(`Valore mancante per ${flag}`);
 
@@ -76,6 +97,8 @@ function parseArgs(argv) {
       const n = Number(raw);
       if (!Number.isInteger(n)) throw new Error(`Valore non intero per ${flag}: ${raw}`);
       config[opt.key] = n;
+    } else if (opt.type === "path") {
+      config[opt.key] = raw;
     } else {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) throw new Error(`Data non valida per ${flag}: ${raw} (formato YYYY-MM-DD)`);
       config[opt.key] = raw;
@@ -97,6 +120,31 @@ async function fetchHistoricalWind(lat, lon, startDate, endDate) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status} - ${await res.text()}`);
   return res.json();
+}
+
+function loadFixture(path) {
+  let text;
+  try {
+    text = fs.readFileSync(path, "utf8");
+  } catch (err) {
+    throw new Error(`Impossibile leggere il fixture "${path}": ${err.message}. Genera con: node generate-fixture.js`);
+  }
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch (err) {
+    throw new Error(`Fixture "${path}" non e' JSON valido: ${err.message}`);
+  }
+  if (!json.spots || typeof json.spots !== "object")
+    throw new Error(`Fixture "${path}" privo del campo "spots"`);
+  return json;
+}
+
+function getFixtureWind(fixture, spot) {
+  const data = fixture.spots[spot.name];
+  if (!data || !data.hourly || !Array.isArray(data.hourly.time))
+    throw new Error(`Nessun dato nel fixture per "${spot.name}"`);
+  return data;
 }
 
 function computeMonthlyStats(data, config) {
@@ -139,15 +187,30 @@ async function main() {
     process.exit(1);
   }
 
+  const source = config.offline
+    ? `fixture ${config.fixture}`
+    : `storico ${config.start} -> ${config.end}`;
   console.log(
     `Criterio: >= ${config.hours}h consecutive con vento >= ${config.knots}kn ` +
-    `nella finestra ${config.dayStart}:00-${config.dayEnd}:00 | storico ${config.start} -> ${config.end}`
+    `nella finestra ${config.dayStart}:00-${config.dayEnd}:00 | ${source}`
   );
+
+  let fixture;
+  if (config.offline) {
+    try {
+      fixture = loadFixture(config.fixture);
+    } catch (err) {
+      console.error(`Errore fixture: ${err.message}`);
+      process.exit(1);
+    }
+  }
 
   for (const spot of SPOTS) {
     console.log(`\n=== ${spot.name} ===`);
     try {
-      const data = await fetchHistoricalWind(spot.lat, spot.lon, config.start, config.end);
+      const data = config.offline
+        ? getFixtureWind(fixture, spot)
+        : await fetchHistoricalWind(spot.lat, spot.lon, config.start, config.end);
       const stats = computeMonthlyStats(data, config);
       for (let m = 1; m <= 12; m++) {
         const mm = String(m).padStart(2, "0");
