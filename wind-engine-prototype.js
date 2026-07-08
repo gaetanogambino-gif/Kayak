@@ -22,9 +22,9 @@ const fs = require("fs");
 // locale e il filtro della finestra diurna (dayStart/dayEnd) e' corretto.
 // Se omesso si usa "auto" (Open-Meteo lo deduce dalle coordinate).
 const SPOTS = [
-  { name: "Tarifa (Spagna)", lat: 36.0128, lon: -5.6012, tz: "Europe/Madrid" },
+  { name: "Tarifa (Spagna)", lat: 36.067779, lon: -5.686508, tz: "Europe/Madrid" },
   { name: "Dakhla (Marocco)", lat: 23.7185, lon: -15.9370, tz: "Africa/El_Aaiun" },
-  { name: "Lo Stagnone - Marsala (Sicilia)", lat: 37.8656, lon: 12.4390, tz: "Europe/Rome" },
+  { name: "Lo Stagnone - Marsala (Sicilia)", lat: 37.877452, lon: 12.478322, tz: "Europe/Rome" },
   // Aggiungi altri spot qui: { name: "...", lat: ..., lon: ..., tz: "..." }
 ];
 
@@ -38,6 +38,8 @@ const DEFAULTS = {
   end: "2025-12-31", // 5 anni di storico
   offline: false,
   fixture: "wind-fixture.json",
+  model: "",   // modello Open-Meteo (es. era5_land); vuoto = default API
+  only: "",    // filtro spot: sottostringhe separate da virgola
 };
 
 const OPTIONS = [
@@ -47,6 +49,8 @@ const OPTIONS = [
   { flags: ["--day-end"], key: "dayEnd", type: "int", help: "ora fine finestra diurna (0-23)" },
   { flags: ["--start"], key: "start", type: "date", help: "data inizio storico (YYYY-MM-DD)" },
   { flags: ["--end"], key: "end", type: "date", help: "data fine storico (YYYY-MM-DD)" },
+  { flags: ["--model"], key: "model", type: "path", help: "modello Open-Meteo (es. era5_land)" },
+  { flags: ["--only"], key: "only", type: "path", help: "esegui solo gli spot che contengono queste sottostringhe (virgola)" },
   { flags: ["--offline"], key: "offline", type: "bool", help: "usa il fixture JSON invece delle API" },
   { flags: ["--fixture"], key: "fixture", type: "path", help: "percorso del fixture JSON (con --offline)" },
 ];
@@ -118,11 +122,12 @@ function parseArgs(argv) {
   return config;
 }
 
-async function fetchHistoricalWind(lat, lon, startDate, endDate, tz) {
+async function fetchHistoricalWind(lat, lon, startDate, endDate, tz, model) {
   const timezone = tz && tz.trim() ? tz : "auto";
-  const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}` +
+  let url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}` +
     `&start_date=${startDate}&end_date=${endDate}` +
     `&hourly=wind_speed_10m&wind_speed_unit=kn&timezone=${encodeURIComponent(timezone)}`;
+  if (model && model.trim()) url += `&models=${encodeURIComponent(model.trim())}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status} - ${await res.text()}`);
   return res.json();
@@ -193,9 +198,10 @@ async function main() {
     process.exit(1);
   }
 
+  const modelLabel = config.model && config.model.trim() ? config.model.trim() : "default";
   const source = config.offline
     ? `fixture ${config.fixture}`
-    : `storico ${config.start} -> ${config.end}`;
+    : `storico ${config.start} -> ${config.end} | modello ${modelLabel}`;
   console.log(
     `Criterio: >= ${config.hours}h consecutive con vento >= ${config.knots}kn ` +
     `nella finestra ${config.dayStart}:00-${config.dayEnd}:00 | ${source}`
@@ -211,12 +217,22 @@ async function main() {
     }
   }
 
-  for (const spot of SPOTS) {
-    console.log(`\n=== ${spot.name} ===`);
+  // Filtro opzionale --only: sottostringhe (case-insensitive) separate da virgola.
+  const filters = config.only.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const spots = filters.length
+    ? SPOTS.filter((s) => filters.some((f) => s.name.toLowerCase().includes(f)))
+    : SPOTS;
+  if (filters.length && spots.length === 0) {
+    console.error(`Nessuno spot corrisponde a --only "${config.only}"`);
+    process.exit(1);
+  }
+
+  for (const spot of spots) {
+    console.log(`\n=== ${spot.name} (lat ${spot.lat}, lon ${spot.lon}) ===`);
     try {
       const data = config.offline
         ? getFixtureWind(fixture, spot)
-        : await fetchHistoricalWind(spot.lat, spot.lon, config.start, config.end, spot.tz);
+        : await fetchHistoricalWind(spot.lat, spot.lon, config.start, config.end, spot.tz, config.model);
       const stats = computeMonthlyStats(data, config);
       for (let m = 1; m <= 12; m++) {
         const mm = String(m).padStart(2, "0");
