@@ -25,7 +25,7 @@ const SPOTS = [
   { name: "Tarifa (Spagna)", lat: 36.067779, lon: -5.686508, tz: "Europe/Madrid" },
   { name: "Dakhla (Marocco)", lat: 23.7185, lon: -15.9370, tz: "Africa/El_Aaiun" },
   { name: "Lo Stagnone - Marsala (Sicilia)", lat: 37.877452, lon: 12.478322, tz: "Europe/Rome" },
-  { name: "Essaouira (Marocco)", lat: 31.5085, lon: -9.7595, tz: "Africa/Casablanca" },
+  { name: "Essaouira (Marocco)", lat: 31.500, lon: -9.770, tz: "Africa/Casablanca" },
   { name: "Corralejo - Fuerteventura (Spagna)", lat: 28.7378, lon: -13.8671, tz: "Atlantic/Canary" },
   { name: "Paje - Zanzibar (Tanzania)", lat: -6.2703, lon: 39.5314, tz: "Africa/Dar_es_Salaam" },
   // Aggiungi altri spot qui: { name: "...", lat: ..., lon: ..., tz: "..." }
