@@ -21,30 +21,35 @@ const fs = require("fs");
 // tz: fuso IANA dello spot, cosi' Open-Meteo restituisce gli orari in ora
 // locale e il filtro della finestra diurna (dayStart/dayEnd) e' corretto.
 // Se omesso si usa "auto" (Open-Meteo lo deduce dalle coordinate).
+// Ogni spot: name (pulito), country, slug (chiave upsert su Supabase), status
+// ('green' = dato affidabile su costa aperta / vento sinottico; 'yellow' = vento
+// incanalato o termico iper-locale, il dato gratuito va corretto), lat, lon, tz.
 const SPOTS = [
-  { name: "Tarifa (Spagna)", lat: 36.067779, lon: -5.686508, tz: "Europe/Madrid" },
-  { name: "Dakhla (Marocco)", lat: 23.7185, lon: -15.9370, tz: "Africa/El_Aaiun" },
-  { name: "Lo Stagnone - Marsala (Sicilia)", lat: 37.877452, lon: 12.478322, tz: "Europe/Rome" },
-  { name: "Essaouira (Marocco)", lat: 31.500, lon: -9.770, tz: "Africa/Casablanca" },
-  { name: "Corralejo - Fuerteventura (Spagna)", lat: 28.7378, lon: -13.8671, tz: "Atlantic/Canary" },
-  { name: "Paje - Zanzibar (Tanzania)", lat: -6.2703, lon: 39.5314, tz: "Africa/Dar_es_Salaam" },
-  { name: "Cumbuco (Brasile, Ceara)", lat: -3.6167, lon: -38.7167, tz: "America/Fortaleza" },
-  { name: "Jericoacoara (Brasile, Ceara)", lat: -2.7975, lon: -40.5137, tz: "America/Fortaleza" },
-  { name: "Cabarete (Rep. Dominicana)", lat: 19.758, lon: -70.419, tz: "America/Santo_Domingo" },
+  { slug: "tarifa-valdevaqueros", name: "Tarifa - Valdevaqueros", country: "Spagna", status: "yellow", lat: 36.067779, lon: -5.686508, tz: "Europe/Madrid" },
+  { slug: "dakhla", name: "Dakhla", country: "Marocco", status: "green", lat: 23.7185, lon: -15.9370, tz: "Africa/El_Aaiun" },
+  { slug: "lo-stagnone-marsala", name: "Lo Stagnone - Marsala", country: "Italia", status: "yellow", lat: 37.877452, lon: 12.478322, tz: "Europe/Rome" },
+  { slug: "essaouira", name: "Essaouira", country: "Marocco", status: "green", lat: 31.500, lon: -9.770, tz: "Africa/Casablanca" },
+  { slug: "corralejo-fuerteventura", name: "Corralejo - Fuerteventura", country: "Spagna", status: "green", lat: 28.7378, lon: -13.8671, tz: "Atlantic/Canary" },
+  { slug: "paje-zanzibar", name: "Paje - Zanzibar", country: "Tanzania", status: "yellow", lat: -6.2703, lon: 39.5314, tz: "Africa/Dar_es_Salaam" },
+  { slug: "cumbuco", name: "Cumbuco", country: "Brasile", status: "green", lat: -3.6167, lon: -38.7167, tz: "America/Fortaleza" },
+  // Jericoacoara: costa aperta, aliseo sinottico; cella marina e cella villaggio
+  // danno numeri identici -> confermato verde.
+  { slug: "jericoacoara", name: "Jericoacoara", country: "Brasile", status: "green", lat: -2.7975, lon: -40.5137, tz: "America/Fortaleza" },
+  { slug: "cabarete", name: "Cabarete", country: "Repubblica Dominicana", status: "green", lat: 19.758, lon: -70.419, tz: "America/Santo_Domingo" },
   // Watamu: coordinata spostata dal lato Mida Creek (riparato) alla spiaggia oceanica (Watamu ward).
-  { name: "Watamu (Kenya)", lat: -3.3570, lon: 40.0260, tz: "Africa/Nairobi" },
-  { name: "Punta Prosciutto - Salento (Italia)", lat: 40.2947, lon: 17.7570, tz: "Europe/Rome" },
+  { slug: "watamu", name: "Watamu", country: "Kenya", status: "green", lat: -3.3570, lon: 40.0260, tz: "Africa/Nairobi" },
+  { slug: "punta-prosciutto-salento", name: "Punta Prosciutto - Salento", country: "Italia", status: "green", lat: 40.2947, lon: 17.7570, tz: "Europe/Rome" },
   // Espansione spot verdi (costa aperta, vento sinottico/aliseo/monsone/meltemi).
-  { name: "Taiba (Brasile, Ceara)", lat: -3.028, lon: -38.878, tz: "America/Fortaleza" },
-  { name: "Santa Maria - Sal (Capo Verde)", lat: 16.591, lon: -22.904, tz: "Atlantic/Cape_Verde" },
-  { name: "Sal Rei - Boa Vista (Capo Verde)", lat: 16.181, lon: -22.918, tz: "Atlantic/Cape_Verde" },
-  { name: "Le Morne (Mauritius)", lat: -20.457, lon: 57.312, tz: "Indian/Mauritius" },
-  { name: "Kalpitiya (Sri Lanka)", lat: 8.234, lon: 79.700, tz: "Asia/Colombo" },
-  { name: "Mui Ne (Vietnam)", lat: 10.933, lon: 108.287, tz: "Asia/Ho_Chi_Minh" },
-  { name: "Famara - Lanzarote (Spagna)", lat: 29.118, lon: -13.552, tz: "Atlantic/Canary" },
-  { name: "Sotavento - Fuerteventura (Spagna)", lat: 28.135, lon: -14.230, tz: "Atlantic/Canary" },
-  { name: "Afiartis - Karpathos (Grecia)", lat: 35.421, lon: 27.150, tz: "Europe/Athens" },
-  // Aggiungi altri spot qui: { name: "...", lat: ..., lon: ..., tz: "..." }
+  { slug: "taiba", name: "Taiba", country: "Brasile", status: "green", lat: -3.028, lon: -38.878, tz: "America/Fortaleza" },
+  { slug: "santa-maria-sal", name: "Santa Maria - Sal", country: "Capo Verde", status: "green", lat: 16.591, lon: -22.904, tz: "Atlantic/Cape_Verde" },
+  { slug: "sal-rei-boa-vista", name: "Sal Rei - Boa Vista", country: "Capo Verde", status: "green", lat: 16.181, lon: -22.918, tz: "Atlantic/Cape_Verde" },
+  { slug: "le-morne", name: "Le Morne", country: "Mauritius", status: "green", lat: -20.457, lon: 57.312, tz: "Indian/Mauritius" },
+  { slug: "kalpitiya", name: "Kalpitiya", country: "Sri Lanka", status: "green", lat: 8.234, lon: 79.700, tz: "Asia/Colombo" },
+  { slug: "mui-ne", name: "Mui Ne", country: "Vietnam", status: "green", lat: 10.933, lon: 108.287, tz: "Asia/Ho_Chi_Minh" },
+  { slug: "famara-lanzarote", name: "Famara - Lanzarote", country: "Spagna", status: "green", lat: 29.118, lon: -13.552, tz: "Atlantic/Canary" },
+  { slug: "sotavento-fuerteventura", name: "Sotavento - Fuerteventura", country: "Spagna", status: "green", lat: 28.135, lon: -14.230, tz: "Atlantic/Canary" },
+  { slug: "afiartis-karpathos", name: "Afiartis - Karpathos", country: "Grecia", status: "green", lat: 35.421, lon: 27.150, tz: "Europe/Athens" },
+  // Aggiungi altri spot qui: { slug: "...", name: "...", country: "...", status: "green|yellow", lat: ..., lon: ..., tz: "..." }
 ];
 
 // Valori predefiniti (sovrascrivibili da CLI).
@@ -59,6 +64,8 @@ const DEFAULTS = {
   fixture: "wind-fixture.json",
   model: "",   // modello Open-Meteo (es. era5_land); vuoto = default API
   only: "",    // filtro spot: sottostringhe separate da virgola
+  writeSupabase: false, // fai upsert dei risultati su Supabase (REST + service_role)
+  emitSql: false,       // stampa l'SQL di upsert invece di scrivere (per revisione/MCP)
 };
 
 const OPTIONS = [
@@ -72,6 +79,8 @@ const OPTIONS = [
   { flags: ["--only"], key: "only", type: "path", help: "esegui solo gli spot che contengono queste sottostringhe (virgola)" },
   { flags: ["--offline"], key: "offline", type: "bool", help: "usa il fixture JSON invece delle API" },
   { flags: ["--fixture"], key: "fixture", type: "path", help: "percorso del fixture JSON (con --offline)" },
+  { flags: ["--write-supabase"], key: "writeSupabase", type: "bool", help: "upsert dei risultati su Supabase (env SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY)" },
+  { flags: ["--emit-sql"], key: "emitSql", type: "bool", help: "stampa l'SQL di upsert invece di scrivere sul DB" },
 ];
 
 const MONTH_NAMES = ["Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set","Ott","Nov","Dic"];
@@ -208,6 +217,107 @@ function computeMonthlyStats(data, config) {
   return monthlyTotals;
 }
 
+// Trasforma i totali mensili nelle righe della tabella wind_monthly_stats.
+function buildStatRows(config, monthlyTotals) {
+  const model = config.model && config.model.trim() ? config.model.trim() : "default";
+  const rows = [];
+  for (let m = 1; m <= 12; m++) {
+    const s = monthlyTotals[String(m).padStart(2, "0")];
+    if (!s) continue;
+    rows.push({
+      month: m,
+      pct_kiteable_days: Number(((s.kiteableDays / s.totalDays) * 100).toFixed(1)),
+      kiteable_days: s.kiteableDays,
+      total_days: s.totalDays,
+      model,
+      threshold_knots: config.knots,
+      min_consecutive_hours: config.hours,
+      day_start_hour: config.dayStart,
+      day_end_hour: config.dayEnd,
+    });
+  }
+  return rows;
+}
+
+// Upsert idempotente via PostgREST. Il service_role bypassa la RLS.
+async function upsertRest(baseUrl, key, table, rows, onConflict) {
+  if (rows.length === 0) return [];
+  const res = await fetch(`${baseUrl}/rest/v1/${table}?on_conflict=${onConflict}`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=representation",
+    },
+    body: JSON.stringify(rows),
+  });
+  if (!res.ok) throw new Error(`Supabase ${table}: HTTP ${res.status} - ${await res.text()}`);
+  return res.json();
+}
+
+// Scrive spots + wind_monthly_stats su Supabase. Chiave di upsert: spots.slug
+// e wind_monthly_stats(spot_id, month).
+async function writeToSupabase(results, config) {
+  const baseUrl = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!baseUrl || !key)
+    throw new Error("Servono le variabili d'ambiente SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY");
+
+  const spotRows = results.map(({ spot }) => ({
+    slug: spot.slug, name: spot.name, country: spot.country,
+    status: spot.status, lat: spot.lat, lon: spot.lon,
+  }));
+  const returned = await upsertRest(baseUrl, key, "spots", spotRows, "slug");
+  const idBySlug = {};
+  returned.forEach((r) => { idBySlug[r.slug] = r.id; });
+
+  const statRows = [];
+  for (const { spot, monthlyTotals } of results) {
+    const spotId = idBySlug[spot.slug];
+    for (const r of buildStatRows(config, monthlyTotals)) statRows.push({ spot_id: spotId, ...r });
+  }
+  await upsertRest(baseUrl, key, "wind_monthly_stats", statRows, "spot_id,month");
+  console.log(`\nSupabase: upsert di ${spotRows.length} spot e ${statRows.length} righe mensili completato.`);
+}
+
+// Genera l'SQL di upsert (per revisione o esecuzione via un altro canale).
+function sqlLit(v) {
+  return v === null || v === undefined ? "null" : `'${String(v).replace(/'/g, "''")}'`;
+}
+function emitUpsertSql(results, config) {
+  const model = config.model && config.model.trim() ? config.model.trim() : "default";
+  const out = [];
+
+  // spots: un solo insert multi-riga con upsert su slug
+  const spotVals = results.map(({ spot }) =>
+    `  (${sqlLit(spot.slug)}, ${sqlLit(spot.name)}, ${sqlLit(spot.country)}, ${sqlLit(spot.status)}, ${spot.lat}, ${spot.lon})`
+  ).join(",\n");
+  out.push(
+    "insert into public.spots (slug, name, country, status, lat, lon) values\n" + spotVals + "\n" +
+    "on conflict (slug) do update set name=excluded.name, country=excluded.country, " +
+    "status=excluded.status, lat=excluded.lat, lon=excluded.lon;"
+  );
+
+  // wind_monthly_stats: CTE (slug, month, pct, k, tot) join spots -> upsert su (spot_id, month)
+  const statVals = [];
+  for (const { spot, monthlyTotals } of results)
+    for (const r of buildStatRows(config, monthlyTotals))
+      statVals.push(`  (${sqlLit(spot.slug)}, ${r.month}, ${r.pct_kiteable_days}, ${r.kiteable_days}, ${r.total_days})`);
+  out.push(
+    "with s(slug, month, pct, k, tot) as (values\n" + statVals.join(",\n") + "\n)\n" +
+    "insert into public.wind_monthly_stats (spot_id, month, pct_kiteable_days, kiteable_days, total_days, " +
+    "model, threshold_knots, min_consecutive_hours, day_start_hour, day_end_hour)\n" +
+    `select sp.id, s.month, s.pct, s.k, s.tot, ${sqlLit(model)}, ${config.knots}, ${config.hours}, ${config.dayStart}, ${config.dayEnd}\n` +
+    "from s join public.spots sp on sp.slug = s.slug\n" +
+    "on conflict (spot_id, month) do update set pct_kiteable_days=excluded.pct_kiteable_days, " +
+    "kiteable_days=excluded.kiteable_days, total_days=excluded.total_days, model=excluded.model, " +
+    "threshold_knots=excluded.threshold_knots, min_consecutive_hours=excluded.min_consecutive_hours, " +
+    "day_start_hour=excluded.day_start_hour, day_end_hour=excluded.day_end_hour, last_updated=now();"
+  );
+  return out.join("\n\n");
+}
+
 async function main() {
   let config;
   try {
@@ -217,11 +327,15 @@ async function main() {
     process.exit(1);
   }
 
+  // In modalita' --emit-sql l'output deve essere solo SQL: i log umani vanno su stderr.
+  const quiet = config.emitSql;
+  const log = quiet ? (...a) => console.error(...a) : (...a) => console.log(...a);
+
   const modelLabel = config.model && config.model.trim() ? config.model.trim() : "default";
   const source = config.offline
     ? `fixture ${config.fixture}`
     : `storico ${config.start} -> ${config.end} | modello ${modelLabel}`;
-  console.log(
+  log(
     `Criterio: >= ${config.hours}h consecutive con vento >= ${config.knots}kn ` +
     `nella finestra ${config.dayStart}:00-${config.dayEnd}:00 | ${source}`
   );
@@ -246,22 +360,36 @@ async function main() {
     process.exit(1);
   }
 
+  const results = [];
   for (const spot of spots) {
-    console.log(`\n=== ${spot.name} (lat ${spot.lat}, lon ${spot.lon}) ===`);
+    log(`\n=== ${spot.name} (lat ${spot.lat}, lon ${spot.lon}) ===`);
     try {
       const data = config.offline
         ? getFixtureWind(fixture, spot)
         : await fetchHistoricalWind(spot.lat, spot.lon, config.start, config.end, spot.tz, config.model);
       const stats = computeMonthlyStats(data, config);
+      results.push({ spot, monthlyTotals: stats });
       for (let m = 1; m <= 12; m++) {
         const mm = String(m).padStart(2, "0");
         const s = stats[mm];
         if (!s) continue;
         const pct = ((s.kiteableDays / s.totalDays) * 100).toFixed(0);
-        console.log(`${MONTH_NAMES[m - 1]}: ${pct}% giorni utili (${s.kiteableDays}/${s.totalDays})`);
+        log(`${MONTH_NAMES[m - 1]}: ${pct}% giorni utili (${s.kiteableDays}/${s.totalDays})`);
       }
     } catch (err) {
       console.error(`Errore per ${spot.name}:`, err.message);
+    }
+  }
+
+  // Scrittura opzionale su Supabase (oppure emissione dell'SQL corrispondente).
+  if (config.emitSql) {
+    console.log(emitUpsertSql(results, config));
+  } else if (config.writeSupabase) {
+    try {
+      await writeToSupabase(results, config);
+    } catch (err) {
+      console.error(`Errore Supabase: ${err.message}`);
+      process.exit(1);
     }
   }
 }
