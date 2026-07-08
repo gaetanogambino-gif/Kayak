@@ -28,6 +28,12 @@ const SPOTS = [
   { name: "Essaouira (Marocco)", lat: 31.500, lon: -9.770, tz: "Africa/Casablanca" },
   { name: "Corralejo - Fuerteventura (Spagna)", lat: 28.7378, lon: -13.8671, tz: "Atlantic/Canary" },
   { name: "Paje - Zanzibar (Tanzania)", lat: -6.2703, lon: 39.5314, tz: "Africa/Dar_es_Salaam" },
+  { name: "Cumbuco (Brasile, Ceara)", lat: -3.6167, lon: -38.7167, tz: "America/Fortaleza" },
+  { name: "Jericoacoara (Brasile, Ceara)", lat: -2.7975, lon: -40.5137, tz: "America/Fortaleza" },
+  { name: "Cabarete (Rep. Dominicana)", lat: 19.758, lon: -70.419, tz: "America/Santo_Domingo" },
+  // Watamu: coordinata spostata dal lato Mida Creek (riparato) alla spiaggia oceanica (Watamu ward).
+  { name: "Watamu (Kenya)", lat: -3.3570, lon: 40.0260, tz: "Africa/Nairobi" },
+  { name: "Punta Prosciutto - Salento (Italia)", lat: 40.2947, lon: 17.7570, tz: "Europe/Rome" },
   // Aggiungi altri spot qui: { name: "...", lat: ..., lon: ..., tz: "..." }
 ];
 
