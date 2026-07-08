@@ -18,11 +18,14 @@
 
 const fs = require("fs");
 
+// tz: fuso IANA dello spot, cosi' Open-Meteo restituisce gli orari in ora
+// locale e il filtro della finestra diurna (dayStart/dayEnd) e' corretto.
+// Se omesso si usa "auto" (Open-Meteo lo deduce dalle coordinate).
 const SPOTS = [
-  { name: "Tarifa (Spagna)", lat: 36.0128, lon: -5.6012 },
-  { name: "Dakhla (Marocco)", lat: 23.7185, lon: -15.9370 },
-  { name: "Lo Stagnone - Marsala (Sicilia)", lat: 37.8656, lon: 12.4390 },
-  // Aggiungi altri spot qui: { name: "...", lat: ..., lon: ... }
+  { name: "Tarifa (Spagna)", lat: 36.0128, lon: -5.6012, tz: "Europe/Madrid" },
+  { name: "Dakhla (Marocco)", lat: 23.7185, lon: -15.9370, tz: "Africa/El_Aaiun" },
+  { name: "Lo Stagnone - Marsala (Sicilia)", lat: 37.8656, lon: 12.4390, tz: "Europe/Rome" },
+  // Aggiungi altri spot qui: { name: "...", lat: ..., lon: ..., tz: "..." }
 ];
 
 // Valori predefiniti (sovrascrivibili da CLI).
@@ -115,8 +118,11 @@ function parseArgs(argv) {
   return config;
 }
 
-async function fetchHistoricalWind(lat, lon, startDate, endDate) {
-  const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&hourly=wind_speed_10m&wind_speed_unit=kn`;
+async function fetchHistoricalWind(lat, lon, startDate, endDate, tz) {
+  const timezone = tz && tz.trim() ? tz : "auto";
+  const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}` +
+    `&start_date=${startDate}&end_date=${endDate}` +
+    `&hourly=wind_speed_10m&wind_speed_unit=kn&timezone=${encodeURIComponent(timezone)}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status} - ${await res.text()}`);
   return res.json();
@@ -210,7 +216,7 @@ async function main() {
     try {
       const data = config.offline
         ? getFixtureWind(fixture, spot)
-        : await fetchHistoricalWind(spot.lat, spot.lon, config.start, config.end);
+        : await fetchHistoricalWind(spot.lat, spot.lon, config.start, config.end, spot.tz);
       const stats = computeMonthlyStats(data, config);
       for (let m = 1; m <= 12; m++) {
         const mm = String(m).padStart(2, "0");
