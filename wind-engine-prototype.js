@@ -34,6 +34,16 @@ const SPOTS = [
   // Watamu: coordinata spostata dal lato Mida Creek (riparato) alla spiaggia oceanica (Watamu ward).
   { name: "Watamu (Kenya)", lat: -3.3570, lon: 40.0260, tz: "Africa/Nairobi" },
   { name: "Punta Prosciutto - Salento (Italia)", lat: 40.2947, lon: 17.7570, tz: "Europe/Rome" },
+  // Espansione spot verdi (costa aperta, vento sinottico/aliseo/monsone/meltemi).
+  { name: "Taiba (Brasile, Ceara)", lat: -3.028, lon: -38.878, tz: "America/Fortaleza" },
+  { name: "Santa Maria - Sal (Capo Verde)", lat: 16.591, lon: -22.904, tz: "Atlantic/Cape_Verde" },
+  { name: "Sal Rei - Boa Vista (Capo Verde)", lat: 16.181, lon: -22.918, tz: "Atlantic/Cape_Verde" },
+  { name: "Le Morne (Mauritius)", lat: -20.457, lon: 57.312, tz: "Indian/Mauritius" },
+  { name: "Kalpitiya (Sri Lanka)", lat: 8.234, lon: 79.700, tz: "Asia/Colombo" },
+  { name: "Mui Ne (Vietnam)", lat: 10.933, lon: 108.287, tz: "Asia/Ho_Chi_Minh" },
+  { name: "Famara - Lanzarote (Spagna)", lat: 29.118, lon: -13.552, tz: "Atlantic/Canary" },
+  { name: "Sotavento - Fuerteventura (Spagna)", lat: 28.135, lon: -14.230, tz: "Atlantic/Canary" },
+  { name: "Afiartis - Karpathos (Grecia)", lat: 35.421, lon: 27.150, tz: "Europe/Athens" },
   // Aggiungi altri spot qui: { name: "...", lat: ..., lon: ..., tz: "..." }
 ];
 
