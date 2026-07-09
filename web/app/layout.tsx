@@ -29,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <nav className="flex gap-5 text-sm" style={{ color: "var(--fg-muted)" }}>
               <Link href="/">Spot</Link>
               <Link href="/mese/gennaio">Per mese</Link>
+              <Link href="/metodo">Metodo</Link>
             </nav>
           </div>
         </header>
@@ -49,7 +50,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               Gli spot <strong style={{ color: "var(--yellow)" }}>gialli</strong> hanno
               vento locale/incanalato che il modello globale non coglie: per quelli il
               dato è indicativo e va corretto. {site.name} è uno strumento di
-              pianificazione, non una previsione.
+              pianificazione, non una previsione.{" "}
+              <Link href="/metodo" style={{ color: "var(--accent)" }}>Come funziona →</Link>
             </p>
           </div>
         </footer>
