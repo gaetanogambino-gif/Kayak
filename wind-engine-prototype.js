@@ -60,6 +60,16 @@ const SPOTS = [
   { slug: "sao-miguel-do-gostoso", name: "São Miguel do Gostoso", country: "Brasile", status: "green", lat: -5.123, lon: -35.635, tz: "America/Fortaleza" },
   { slug: "los-roques", name: "Los Roques", country: "Venezuela", status: "green", lat: 11.948, lon: -66.752, tz: "America/Caracas" },
   { slug: "diani-beach", name: "Diani Beach", country: "Kenya", status: "green", lat: -4.297, lon: 39.591, tz: "Africa/Nairobi" },
+  // Spot gialli iconici (completezza mappa): vento locale/incanalato/termico che il
+  // modello globale non coglie; il dato grezzo va corretto (Fase 4).
+  { slug: "la-ventana", name: "La Ventana", country: "Messico", status: "yellow", lat: 24.052, lon: -109.988, tz: "America/Mazatlan" },
+  { slug: "los-barriles", name: "Los Barriles", country: "Messico", status: "yellow", lat: 23.681, lon: -109.680, tz: "America/Mazatlan" },
+  { slug: "bloubergstrand-cape-town", name: "Bloubergstrand - Cape Town", country: "Sudafrica", status: "yellow", lat: -33.815, lon: 18.470, tz: "Africa/Johannesburg" },
+  { slug: "kanaha-maui", name: "Kanaha - Maui", country: "Stati Uniti", status: "yellow", lat: 20.905, lon: -156.435, tz: "Pacific/Honolulu" },
+  { slug: "dahab", name: "Dahab", country: "Egitto", status: "yellow", lat: 28.485, lon: 34.515, tz: "Africa/Cairo" },
+  { slug: "el-medano-tenerife", name: "El Médano - Tenerife", country: "Spagna", status: "yellow", lat: 28.043, lon: -16.535, tz: "Atlantic/Canary" },
+  { slug: "pozo-izquierdo-gran-canaria", name: "Pozo Izquierdo - Gran Canaria", country: "Spagna", status: "yellow", lat: 27.815, lon: -15.420, tz: "Atlantic/Canary" },
+  { slug: "prasonisi-rodi", name: "Prasonisi - Rodi", country: "Grecia", status: "yellow", lat: 35.884, lon: 27.767, tz: "Europe/Athens" },
   // Aggiungi altri spot qui: { slug: "...", name: "...", country: "...", status: "green|yellow", lat: ..., lon: ..., tz: "..." }
 ];
 
