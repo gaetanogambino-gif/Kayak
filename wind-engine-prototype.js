@@ -49,6 +49,17 @@ const SPOTS = [
   { slug: "famara-lanzarote", name: "Famara - Lanzarote", country: "Spagna", status: "green", lat: 29.118, lon: -13.552, tz: "Atlantic/Canary" },
   { slug: "sotavento-fuerteventura", name: "Sotavento - Fuerteventura", country: "Spagna", status: "green", lat: 28.135, lon: -14.230, tz: "Atlantic/Canary" },
   { slug: "afiartis-karpathos", name: "Afiartis - Karpathos", country: "Grecia", status: "green", lat: 35.421, lon: 27.150, tz: "Europe/Athens" },
+  // Espansione 2: spot verdi a picco invernale boreale (bilanciamento del calendario).
+  { slug: "cabo-de-la-vela", name: "Cabo de la Vela", country: "Colombia", status: "green", lat: 12.190, lon: -72.155, tz: "America/Bogota" },
+  { slug: "bonaire-atlantis", name: "Bonaire - Atlantis", country: "Bonaire", status: "green", lat: 12.033, lon: -68.283, tz: "America/Kralendijk" },
+  { slug: "aruba-fishermans-huts", name: "Aruba - Fisherman's Huts", country: "Aruba", status: "green", lat: 12.577, lon: -70.045, tz: "America/Aruba" },
+  { slug: "geraldton", name: "Geraldton", country: "Australia", status: "green", lat: -28.774, lon: 114.612, tz: "Australia/Perth" },
+  { slug: "tobago-pigeon-point", name: "Tobago - Pigeon Point", country: "Trinidad e Tobago", status: "green", lat: 11.165, lon: -60.850, tz: "America/Port_of_Spain" },
+  { slug: "boracay-bulabog", name: "Boracay - Bulabog", country: "Filippine", status: "green", lat: 11.968, lon: 121.930, tz: "Asia/Manila" },
+  { slug: "lancelin", name: "Lancelin", country: "Australia", status: "green", lat: -31.017, lon: 115.330, tz: "Australia/Perth" },
+  { slug: "sao-miguel-do-gostoso", name: "São Miguel do Gostoso", country: "Brasile", status: "green", lat: -5.123, lon: -35.635, tz: "America/Fortaleza" },
+  { slug: "los-roques", name: "Los Roques", country: "Venezuela", status: "green", lat: 11.948, lon: -66.752, tz: "America/Caracas" },
+  { slug: "diani-beach", name: "Diani Beach", country: "Kenya", status: "green", lat: -4.297, lon: 39.591, tz: "Africa/Nairobi" },
   // Aggiungi altri spot qui: { slug: "...", name: "...", country: "...", status: "green|yellow", lat: ..., lon: ..., tz: "..." }
 ];
 
